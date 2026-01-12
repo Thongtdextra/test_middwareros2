@@ -1,0 +1,31 @@
+allowlist:
+  - name: "rt/server/*"
+    type: "*"
+  - name: "rt/b2/*"
+    type: "*"
+  - name: "rq/b2/*"
+    type: "*"
+  - name: "rr/b2/*"
+    type: "*"
+topics:
+  - name: "rt/b2/*"
+    type: "*"
+    qos:
+      reliability: false
+      durability: false
+blocklist: []
+builtin-topics: []
+participants:
+  - name: DiscoveryClient
+    kind: discovery-server
+    # listening-addresses:
+    connection-addresses:
+      - ip: 10.22.0.1
+        port: 11111
+        transport: udp
+    domain: 0  # Kết nối đến domain của server
+  - name: SimpleParticipantlocal1
+    kind: local
+    domain: 2
+    whitelist-interfaces:
+      - 127.0.0.1

@@ -1,0 +1,285 @@
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 {
+  mode: "router",
+  connect: {
+    timeout_ms: { router: -1, peer: -1, client: 0 },
+    endpoints: [
+      "tcp/10.22.0.107:7447"
+    ],
+    exit_on_failure: { router: false, peer: false, client: true },
+    retry: {
+      period_init_ms: 1000,
+      period_max_ms: 4000,
+      period_increase_factor: 2,
+    },
+  },
+  listen: {
+    timeout_ms: 0,
+    endpoints: [
+      "tcp/[::]:7447"
+    ],
+    exit_on_failure: true,
+    retry: {
+      period_init_ms: 1000,
+      period_max_ms: 4000,
+      period_increase_factor: 2,
+    },
+  },
+  open: {
+    return_conditions: {
+      connect_scouted: true,
+      declares: true,
+    },
+  },
+  /// Configure the scouting mechanisms and their behaviours
+  scouting: {
+    timeout: 3000,
+    delay: 500,
+    multicast: {
+      enabled: false,
+      address: "224.0.0.224:7446",
+      interface: "auto", // If not set or set to "auto" the interface if picked automatically
+      ttl: 1,
+      autoconnect: { router: [], peer: ["router", "peer"], client: ["router"] },
+      autoconnect_strategy: { router: { to_router: "always", to_peer: "always" } },
+      listen: true,
+    },
+    /// The gossip scouting configuration. Note that instances in "client" mode do not participate in gossip.
+    gossip: {
+      /// Whether gossip scouting is enabled or not
+      enabled: true,
+      multihop: false,
+      target: { router: ["router", "peer"], peer: ["router"]},
+      autoconnect: { router: [], peer: ["router", "peer"] },
+      autoconnect_strategy: { router: { to_router: "always", to_peer: "always" } },
+    },
+  },
+
+  /// Configuration of data messages timestamps management.
+  timestamping: {
+    enabled: { router: true, peer: true, client: true },
+    drop_future_timestamp: false,
+  },
+
+  queries_default_timeout: 60000,
+
+  /// The routing strategy to use and it's configuration.
+  routing: {
+    router: {
+      peers_failover_brokering: false,
+      linkstate: {
+      }
+    },
+    /// The routing strategy to use in peers and it's configuration.
+    peer: {
+      mode: "peer_to_peer",
+        /// Linkstate mode configuration (only taken into account if mode == "linkstate").
+        linkstate: {
+      }
+    },
+    interests: {
+      timeout: 10000,
+    },
+  },
+
+  //  /// Configure access control (ACL) rules
+access_control: {
+  enabled: true,
+  default_permission: "allow",   // allow all by default
+  /// List of rules
+  rules: [
+    {
+      // Rule identifier
+      id: "my_rule",
+      // Deny publications ("put" Zenoh operation) and missed data retrieval in egress on WiFi interface for a Zenoh key expression
+      permission: "deny",
+      messages: [
+           "put", "delete", "declare_subscriber",
+           "query", "reply", "declare_queryable",
+           "liveliness_token", "liveliness_query", "declare_liveliness_subscriber"
+      ],
+      flows:["egress","ingress"],
+      key_exprs: [
+        //"*/chatter/**/@adv/pub/**",
+        //"@ros2_lv/**/%mavros%$*/**",
+        "@ros2_lv/**/%mavros%cmd$*/**", // tai box ko chan mavros de gui msg /mavros/gps_rtk/send_rtcm
+        "@ros2_lv/**/%mavros/**", // node mavros
+        "@ros2_lv/**/mavros_node/**",
+        "@ros2_lv/**/mavros/**",
+        "@ros2_lv/**/%mavros_node%$*/**",
+        "@ros2_lv/**/mavros_router/**",
+        "@ros2_lv/**/%move_base_simple%$*/**",
+        "@ros2_lv/**/%tf/**",
+        "@ros2_lv/**/%tf_static/**",
+        "@ros2_lv/**/%uas1%$*/**",
+        "@ros2_lv/**/%diagnostics/**",
+        "@ros2_lv/**/%plan_upload_node$*%$*/**",
+        "@ros2_lv/**/%telemetry_node$*%$*/**",
+        "@ros2_lv/**/turtlesim",
+        "@ros2_lv/**/turtlesim/%rosout/**",
+        "@ros2_lv/**/%system1%$*/**",
+        "@ros2_lv/**/%system2%$*/**",
+        "@ros2_lv/**/%rtk_info$*/**",
+        "@ros2_lv/**/$*%joint_trajectory/**",
+        "@ros2_lv/**/%joint_states$*/**",
+        "@ros2_lv/**/%env%$*/**",
+        "@ros2_lv/**/%clamp%$*/**",
+        "@ros2_lv/**/%dock%$*/**",
+        "@ros2_lv/**/%box%$*/**",
+        "@ros2_lv/**/%gps$*/**",
+        "@ros2_lv/**/%scheduler$*%$*/**",
+        "@ros2_lv/**/%box_state_manager$*%$*/**",
+        "@ros2_lv/**/%box_sim_pkg_node$*%$*/**",
+        "@ros2_lv/**/%base_rtk_node$*%$*/**",
+        "@ros2_lv/**/%lid%$*/**"
+      ],
+    },
+  ],
+  /// list of subjects:
+  subjects: [
+    {
+      // Interface identifier
+      id: "my_interface",
+      interfaces: ["wg0"],
+    },
+  ],
+  /// apply rule to subject in the policies list
+  policies: [
+    {
+      rules: ["my_rule"],
+      subjects: ["my_interface"],
+    },
+  ],
+},
+  /// Configure internal transport parameters
+  transport: {
+    unicast: {
+      open_timeout: 60000,
+      accept_timeout: 60000,
+      accept_pending: 10000,
+      max_sessions: 10000,
+      /// Maximum number of incoming links that are admitted per transport
+      max_links: 1,
+      lowlatency: false,
+      /// Enables QoS on unicast communications.
+      qos: {
+        enabled: true,
+      },
+      compression: {
+        enabled: false,
+      },
+    },
+    multicast: {
+      /// JOIN message transmission interval in milliseconds.
+      join_interval: 2500,
+      /// Maximum number of multicast sessions.
+      max_sessions: 1000,
+      /// Enables QoS on multicast communication.
+      /// Default to false for Zenoh-to-Zenoh-Pico out-of-the-box compatibility.
+      qos: {
+        enabled: false,
+      },
+      /// Enables compression on multicast communication.
+      /// Default to false for Zenoh-to-Zenoh-Pico out-of-the-box compatibility.
+      compression: {
+        enabled: false,
+      },
+    },
+    link: {
+      tx: {
+        sequence_number_resolution: "32bit",
+        /// Link lease duration in milliseconds to announce to other zenoh nodes
+        /// ROS setting: increase the value to avoid lease expiration at launch time with a large number of Nodes starting all together
+        lease: 60000,
+        keep_alive: 2,
+        batch_size: 65535,
+        /// Each zenoh link has a transmission queue that can be configured
+        queue: {
+          size: {
+            control: 2,
+            real_time: 2,
+            interactive_high: 2,
+            interactive_low: 2,
+            data_high: 2,
+            data: 2,
+            data_low: 2,
+            background: 2,
+          },
+          /// Congestion occurs when the queue is empty (no available batch).
+          congestion_control: {
+            /// Behavior pushing CongestionControl::Drop messages to the queue.
+            drop: {
+              /// The maximum time in microseconds to wait for an available batch before dropping a droppable message if still no batch is available.
+              wait_before_drop: 1000,
+              /// The maximum deadline limit for multi-fragment messages.
+              max_wait_before_drop_fragments: 50000,
+            },
+            /// Behavior pushing CongestionControl::Block messages to the queue.
+            block: {
+              wait_before_close: 5000000,
+            },
+          },
+          /// Perform batching of messages if they are smaller of the batch_size
+          batching: {
+            enabled: true,
+            /// The maximum time limit (in ms) a message should be retained for batching when back-pressure happens.
+            time_limit: 1,
+          },
+          allocation: {
+            mode: "lazy",
+          },
+        },
+      },
+      /// Configure the zenoh RX parameters of a link
+      rx: {
+        buffer_size: 65535,
+        max_message_size: 1073741824,
+      },
+      /// Configure TLS specific parameters
+      tls: {
+        root_ca_certificate: null, //"/home/thongtd/tls/minica/minica.pem",
+        ///"/home/user/client/minica.pem",
+        listen_private_key: null, //"/home/user/server/localhost/key.pem",
+        listen_certificate: null, //"/home/user/server/localhost/cert.pem"
+        enable_mtls: false,
+        connect_private_key: null, //"/home/thongtd/tls/minica/157.20.201.240/key.pem",
+        connect_certificate: null, //"/home/thongtd/tls/minica/157.20.201.240/cert.pem",
+        verify_name_on_connect: true,
+        close_link_on_expiration: false,
+      },
+    // // Configure optional TCP link specific parameters
+    // tcp: {
+    // }
+    },
+    shared_memory: {
+      enabled: false,
+      mode: "lazy",
+    },
+    auth: {
+      /// The configuration of authentication.
+      /// A password implies a username is required.
+      usrpwd: {
+        user: null,
+        password: null,
+        /// The path to a file containing the user password dictionary
+        dictionary_file: null,
+      },
+      pubkey: {
+        public_key_pem: null,
+        private_key_pem: null,
+        public_key_file: null,
+        private_key_file: null,
+        key_size: null,
+        known_keys_file: null,
+      },
+    },
+  },
+  adminspace: {
+    /// Enables the admin space
+    enabled: true,
+    /// read and/or write permissions on the admin space
+    permissions: {
+      read: true,
+      write: false,
+    },
+  },
+}
