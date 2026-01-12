@@ -1,51 +1,45 @@
-ROS 2 Middleware Benchmark: FastDDS vs Zenoh trên Mạng Không Ổn Định
-Dự án này cung cấp bộ công cụ và quy trình để đánh giá hiệu năng (Throughput, Latency, Resilience) của hai cấu hình middleware ROS 2 Humble phổ biến: rmw_fastrtps_cpp (với DDS Router) và rmw_zenoh_cpp (với Zenoh Router). Mục tiêu là xác định giải pháp tối ưu cho Mobile Robots (Rover) hoạt động trong môi trường WiFi/WAN suy hao.
+ROS 2 Middleware Benchmark: FastDDS vs. Zenoh on Unstable Networks
+This project provides a toolkit and workflow to evaluate the performance (Throughput, Latency, Resilience) of two common ROS 2 Humble middleware configurations: rmw_fastrtps_cpp (with DDS Router) and rmw_zenoh_cpp (with Zenoh Router). The goal is to determine the optimal solution for Mobile Robots (Rovers) operating in lossy WiFi/WAN environments.
 
-1. Yêu cầu Hệ thống (Prerequisites)
+Prerequisites
 OS: Ubuntu 22.04 LTS
 
 ROS 2: Humble Hawksbill
 
-Docker: Phiên bản 20.10+
+Docker: Version 20.10+
 
-Phần cứng: 2 máy tính (hoặc 1 máy mạnh chạy 2 container tách biệt mạng)
+Hardware: 2 Computers (or 1 powerful machine running 2 network-isolated containers)
 
-Network Tools: iproute2 (cho lệnh tc), python3
+Network Tools: iproute2 (for the tc command), python3
 
-2. Cài đặt và Build
-Clone repository và build các Docker image:bash git clone -b middlewareros_amd64 https://gitlab.phenikaax.com/sonlv/rover.git cd rover
+Installation and Build
+Clone the repository and build the Docker images:
+git clone https://github.com/Thongtdextra/test_middwareros2.git
 
-Build image cho Fast DDS
-cd /home/<User>/test_middwareros2/Dockerbuild/DDS_Router
+Build image for Fast DDS:
+cd /home/<user>/test_middwareros2/Dockerbuild/DDS_Router
 docker build -t ros2_fastdds_benchmark Dockerfile
 
-Build image cho Zenoh
-cd /home/<User>/test_middwareros2/Dockerbuild/Zenoh
+Build image for Zenoh:
+cd /home/<user>/test_middwareros2/Dockerbuild/Zenoh
 docker build -t ros2_zenoh_benchmark Dockerfile
+Detailed Testing Procedure
+The testing process is designed to simulate real-world scenarios in distributed systems, focusing on publisher-subscriber (pub-sub) models at various scales. Tests are performed on two middleware configurations: Fast DDS + DDS Router and Zenoh + Zenoh Router.
 
-3. Quy Trình Kiểm Tra Chi Tiết
-
-Quy trình kiểm tra được thiết kế để mô phỏng các kịch bản thực tế trong hệ thống phân tán, tập trung vào publisher-subscriber (pub-sub) với quy mô khác nhau. Các kiểm tra được thực hiện trên hai middleware: Fast DDS + DDS Router và Zenoh + Zenoh Router.
-
-3.1. Tại device (mobile): Bắt WiFi hotspot và gửi topic
-
+On the Device (Mobile): Connect to WiFi Hotspot and Publish Topics
+Publish a test topic with specific QoS settings:
 ros2 topic pub /b2/testreliable1hz std_msgs/msg/String "{data: 'Hello, ROS 2'}" --rate 5 --qos-reliability best_effort
 
- Mô Phỏng Gián Đoạn Mạng: Sử dụng công cụ tc (Traffic Control) để áp dụng các điều kiện mạng kém:
- #Xóa cấu hình cũ:
+Network Interruption Simulation: Use the tc (Traffic Control) tool to apply poor network conditions:
+# Clear old configuration
 sudo tc qdisc del dev eno1 root
- 
-#Thêm trễ 100ms và mất 10% gói:
+# Add 100ms delay and 10% packet loss
 sudo tc qdisc add dev eno1 root netem delay 100ms loss 10%
- 
-#Thêm trễ 200ms và mất 20% gói:
+# Add 200ms delay and 20% packet loss
 sudo tc qdisc add dev eno1 root netem delay 200ms loss 20%
- 
 
-3.2. Tại server: Chạy script giám sát realtime
-
+On the Server: Run Real-time Monitoring Script
+Run the python script to monitor the connection and data flow:
 ./monitor_hz_ping.py /b2/testreliable1hz [IP_gateway]
 
-Script đo Hz, ping, phát hiện NO_MESSAGE, và log CSV chi tiết.
-
-
+This script measures Hz, ping latency, detects NO_MESSAGE events, and logs detailed data to a CSV file.
